@@ -1803,6 +1803,8 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
       wlv.n_extra = 0;
     }
 
+    char *text = "hello";
+    int textlen = (int)strlen(text);
     // Get the next character to put on the screen.
     //
     // The "p_extra" points to the extra stuff that is inserted to
@@ -2430,8 +2432,14 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
             wlv.boguscols += wlv.n_extra;
             wlv.col += wlv.n_extra;
           }
-          wlv.n_extra = 0;
-          wlv.n_attr = 0;
+          wlv.p_extra = text;
+          wlv.n_extra = textlen;
+          wlv.sc_extra = NUL;
+          wlv.sc_final = NUL;
+          wlv.extra_attr = 0;
+          wlv.n_attr = mb_charlen(text);
+          wlv.col += textlen;
+          wlv.boguscols += textlen;
         } else if (wlv.skip_cells == 0) {
           is_concealing = true;
           wlv.skip_cells = 1;
