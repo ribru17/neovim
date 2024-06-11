@@ -25,11 +25,13 @@ typedef struct {
                              ///< parts of lines, INT_MIN if not yet calculated.
 
   int virt_row;              ///< Row for virtual text, -1 if no virtual text.
+  int conceal_row;           ///< Row for conceal text, -1 if no conceal text.
   int cur_text_width_left;   ///< Width of virtual text left of cursor.
   int cur_text_width_right;  ///< Width of virtual text right of cursor.
 
   int max_head_vcol;         ///< See charsize_regular().
   MarkTreeIter iter[1];
+  MarkTreeIter sign_iter[1];
 } CharsizeArg;
 
 typedef struct {
