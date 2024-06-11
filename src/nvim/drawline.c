@@ -1803,8 +1803,8 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
       wlv.n_extra = 0;
     }
 
-    char *text = "hello";
-    int textlen = (int)strlen(text);
+    char *HARDCODED_CONCEAL_TEXT = "123";
+    int HARDCODED_CTEXT_LEN = (int)strlen(HARDCODED_CONCEAL_TEXT);
     // Get the next character to put on the screen.
     //
     // The "p_extra" points to the extra stuff that is inserted to
@@ -2432,14 +2432,15 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
             wlv.boguscols += wlv.n_extra;
             wlv.col += wlv.n_extra;
           }
-          wlv.p_extra = text;
-          wlv.n_extra = textlen;
+          wlv.p_extra = HARDCODED_CONCEAL_TEXT;
+          wlv.n_extra = HARDCODED_CTEXT_LEN;
           wlv.sc_extra = NUL;
           wlv.sc_final = NUL;
           wlv.extra_attr = 0;
-          wlv.n_attr = mb_charlen(text);
-          wlv.col += textlen;
-          wlv.boguscols += textlen;
+          wlv.n_attr = mb_charlen(HARDCODED_CONCEAL_TEXT);
+          wlv.col += HARDCODED_CTEXT_LEN;
+          wlv.vcol -= HARDCODED_CTEXT_LEN;
+          wlv.boguscols += HARDCODED_CTEXT_LEN;
         } else if (wlv.skip_cells == 0) {
           is_concealing = true;
           wlv.skip_cells = 1;

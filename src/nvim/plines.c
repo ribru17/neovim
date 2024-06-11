@@ -13,15 +13,19 @@
 #include "nvim/decoration.h"
 #include "nvim/decoration_defs.h"
 #include "nvim/diff.h"
+#include "nvim/drawscreen.h"
 #include "nvim/fold.h"
 #include "nvim/globals.h"
+#include "nvim/grid.h"
 #include "nvim/indent.h"
 #include "nvim/macros_defs.h"
 #include "nvim/mark_defs.h"
 #include "nvim/marktree.h"
+#include "nvim/marktree_defs.h"
 #include "nvim/mbyte.h"
 #include "nvim/mbyte_defs.h"
 #include "nvim/memline.h"
+#include "nvim/message.h"
 #include "nvim/move.h"
 #include "nvim/option.h"
 #include "nvim/option_vars.h"
@@ -29,7 +33,9 @@
 #include "nvim/pos_defs.h"
 #include "nvim/state.h"
 #include "nvim/state_defs.h"
+#include "nvim/syntax.h"
 #include "nvim/types_defs.h"
+#include "stdio.h"
 
 #ifdef INCLUDE_GENERATED_DECLARATIONS
 # include "plines.c.generated.h"
@@ -81,6 +87,8 @@ int linetabsize(win_T *wp, linenr_T lnum)
 }
 
 static const uint32_t inline_filter[4] = {[kMTMetaInline] = kMTFilterSelect };
+static const uint32_t sign_filter[4] = {[kMTMetaSignText] = kMTFilterSelect,
+                                        [kMTMetaSignHL] = kMTFilterSelect };
 
 /// Prepare the structure passed to charsize functions.
 ///
@@ -94,10 +102,16 @@ CSType init_charsize_arg(CharsizeArg *csarg, win_T *wp, linenr_T lnum, char *lin
   csarg->cur_text_width_left = 0;
   csarg->cur_text_width_right = 0;
   csarg->virt_row = -1;
+  csarg->conceal_row = -1;
   csarg->indent_width = INT_MIN;
   csarg->use_tabstop = !wp->w_p_list || wp->w_p_lcs_chars.tab1;
 
   if (lnum > 0) {
+    if (marktree_itr_get_filter(wp->w_buffer->b_marktree, lnum - 1, 0, lnum, 0,
+                                sign_filter, csarg->sign_iter)) {
+      // FIXME: Code never reaches this point
+      csarg->conceal_row = lnum - 1;
+    }
     if (marktree_itr_get_filter(wp->w_buffer->b_marktree, lnum - 1, 0, lnum, 0,
                                 inline_filter, csarg->iter)) {
       csarg->virt_row = lnum - 1;
@@ -105,6 +119,7 @@ CSType init_charsize_arg(CharsizeArg *csarg, win_T *wp, linenr_T lnum, char *lin
   }
 
   if (csarg->virt_row >= 0
+      || conceal_cursor_line(wp)
       || (wp->w_p_wrap && (wp->w_p_lbr || wp->w_p_bri || *get_showbreak_value(wp) != NUL))) {
     return kCharsizeRegular;
   } else {
@@ -150,9 +165,29 @@ CharSize charsize_regular(CharsizeArg *csarg, char *const cur, colnr_T const vco
     is_doublewidth = size == 2 && cur_char > 0x80;
   }
 
+  int col = (int)(cur - line);
+  if (marktree_itr_get_ext(buf->b_marktree, MTPos(csarg->conceal_row, col), csarg->sign_iter, false,
+                           false, NULL, sign_filter)) {
+    do {
+      MTKey mark = marktree_itr_current(csarg->sign_iter);
+      /*char buff[20];*/
+      /*sprintf(buff, "%d, %d", mark.pos.row, csarg->conceal_row);*/
+      /*msg(_(buff), 0);*/
+
+      if (mark.pos.row != csarg->conceal_row || mark.pos.col > col) {
+        break;
+      }
+      if (!mt_end(mark) && ns_in_win(mark.ns, wp) && mark.decor_data.hl.flags & kSHConceal
+          && mark.decor_data.hl.conceal_char != NUL) {
+        size += 3;
+        break;
+      }
+    } while (marktree_itr_next_filter(wp->w_buffer->b_marktree, csarg->sign_iter,
+                                      csarg->conceal_row + 1, 0, sign_filter));
+  }
+
   if (csarg->virt_row >= 0) {
     int tab_size = size;
-    int col = (int)(cur - line);
     while (true) {
       MTKey mark = marktree_itr_current(csarg->iter);
       if (mark.pos.row != csarg->virt_row || mark.pos.col > col) {
