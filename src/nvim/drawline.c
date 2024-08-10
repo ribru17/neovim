@@ -1804,7 +1804,7 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
     }
 
     char *HARDCODED_CONCEAL_TEXT = "123";
-    int HARDCODED_CTEXT_LEN = (int)strlen(HARDCODED_CONCEAL_TEXT);
+    int HARDCODED_CTEXT_LEN = mb_charlen(HARDCODED_CONCEAL_TEXT);
     // Get the next character to put on the screen.
     //
     // The "p_extra" points to the extra stuff that is inserted to
@@ -2438,9 +2438,9 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
           wlv.sc_final = NUL;
           wlv.extra_attr = 0;
           wlv.n_attr = mb_charlen(HARDCODED_CONCEAL_TEXT);
-          wlv.col += HARDCODED_CTEXT_LEN;
-          wlv.vcol -= HARDCODED_CTEXT_LEN;
-          wlv.boguscols += HARDCODED_CTEXT_LEN;
+          // wlv.col += HARDCODED_CTEXT_LEN;
+          // wlv.vcol -= HARDCODED_CTEXT_LEN;
+          // wlv.boguscols += HARDCODED_CTEXT_LEN;
         } else if (wlv.skip_cells == 0) {
           is_concealing = true;
           wlv.skip_cells = 1;
@@ -2456,6 +2456,9 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
       }
     }  // end of printing from buffer content
 
+    // NOTE: vcol_off_co represents the length (amt) of text to be concealed
+    // NOTE: w_virtcol represents the actual visual cursor position. Put that first in the
+    // condition?
     // In the cursor line and we may be concealing characters: correct
     // the cursor column when we reach its position.
     // With 'virtualedit' we may never reach cursor position, but we still
@@ -2463,13 +2466,14 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
     if (!did_wcol && wlv.filler_todo <= 0
         && wp == curwin && lnum == wp->w_cursor.lnum
         // don't push the cursor on the first column
-        && wp->w_virtcol > 0
+        // && wp->w_virtcol > MAX(0, wlv.vcol_off_co - HARDCODED_CTEXT_LEN)
+        && wp->w_virtcol > wlv.vcol_off_co
         && conceal_cursor_line(wp)
         // add 1 to the check to jump the cursor after it is already on the concealed text
         // NOTE: vcol_off_co represents the length (amt) of text to be concealed
         // NOTE: w_virtcol represents the actual visual cursor position. Put that first in the
         // condition?
-        && (wlv.vcol + wlv.skip_cells + 1 >= wp->w_virtcol || mb_schar == NUL)) {
+        && (wlv.vcol + wlv.skip_cells - HARDCODED_CTEXT_LEN >= wp->w_virtcol || mb_schar == NUL)) {
       wp->w_wcol = wlv.col - wlv.boguscols;
       if (wlv.vcol + wlv.skip_cells < wp->w_virtcol) {
         // Cursor beyond end of the line with 'virtualedit'.
