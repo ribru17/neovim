@@ -2467,13 +2467,14 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
         && wp == curwin && lnum == wp->w_cursor.lnum
         // don't push the cursor on the first column
         // && wp->w_virtcol > MAX(0, wlv.vcol_off_co - HARDCODED_CTEXT_LEN)
-        && wp->w_virtcol > wlv.vcol_off_co
+        // && wp->w_virtcol > wlv.skip_cells
+        && wp->w_virtcol > HARDCODED_CTEXT_LEN - wlv.vcol_off_co
         && conceal_cursor_line(wp)
         // add 1 to the check to jump the cursor after it is already on the concealed text
         // NOTE: vcol_off_co represents the length (amt) of text to be concealed
         // NOTE: w_virtcol represents the actual visual cursor position. Put that first in the
         // condition?
-        && (wlv.vcol + wlv.skip_cells - HARDCODED_CTEXT_LEN >= wp->w_virtcol || mb_schar == NUL)) {
+        && (wlv.vcol + wlv.skip_cells - 3 - MAX(0, wlv.vcol_off_co - HARDCODED_CTEXT_LEN) >= wp->w_virtcol || mb_schar == NUL)) {
       wp->w_wcol = wlv.col - wlv.boguscols;
       if (wlv.vcol + wlv.skip_cells < wp->w_virtcol) {
         // Cursor beyond end of the line with 'virtualedit'.
