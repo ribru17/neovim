@@ -989,6 +989,8 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
   int conceal_attr = win_hl_attr(wp, HLF_CONCEAL);
   bool is_concealing = false;
   bool did_wcol = false;
+
+  int extra_conceal_chars = 0;
 #define vcol_hlc(wlv) ((wlv).vcol - (wlv).vcol_off_co)
 
   assert(startrow < endrow);
@@ -2438,6 +2440,7 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
           wlv.sc_final = NUL;
           wlv.extra_attr = 0;
           wlv.n_attr = mb_charlen(HARDCODED_CONCEAL_TEXT);
+          extra_conceal_chars = HARDCODED_CTEXT_LEN;
         } else if (wlv.skip_cells == 0) {
           is_concealing = true;
           wlv.skip_cells = 1;
@@ -2457,12 +2460,12 @@ int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow, int col_rows, s
     // the cursor column when we reach its position.
     // With 'virtualedit' we may never reach cursor position, but we still
     // need to correct the cursor column, so do that at end of line.
-    int offset = MIN(HARDCODED_CTEXT_LEN + 1, wlv.vcol_off_co + wlv.skip_cells * 2);
+    int offset = MIN(extra_conceal_chars + 1, wlv.vcol_off_co + wlv.skip_cells * 2);
     if (!did_wcol && wlv.filler_todo <= 0
         && wp == curwin && lnum == wp->w_cursor.lnum
         && conceal_cursor_line(wp)
         && wp->w_virtcol > offset
-        && (wlv.vcol + wlv.skip_cells - HARDCODED_CTEXT_LEN >= wp->w_virtcol || mb_schar == NUL)) {
+        && (wlv.vcol + wlv.skip_cells - extra_conceal_chars >= wp->w_virtcol || mb_schar == NUL)) {
       wp->w_wcol = wlv.col - wlv.boguscols;
       if (wlv.vcol + wlv.skip_cells < wp->w_virtcol) {
         // Cursor beyond end of the line with 'virtualedit'.
