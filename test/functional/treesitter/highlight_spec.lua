@@ -513,6 +513,58 @@ describe('treesitter highlighting (C)', function()
     screen:expect { grid = injection_grid_expected_c }
   end)
 
+  it('supports combined injections', function()
+    insert([=[
+    -- print([[some
+    -- text
+    -- here]])
+    ]=])
+
+    screen:expect([=[
+      -- print([[some                                                  |
+      -- text                                                          |
+      -- here]])                                                       |
+      ^                                                                 |
+      {1:~                                                                }|*13
+                                                                       |
+    ]=])
+
+    exec_lua(function()
+      local parser = vim.treesitter.get_parser(0, 'lua', {
+        injections = {
+          lua = [[
+          ; query
+          ((comment_content) @injection.content
+            (#set! injection.self)
+            (#set! injection.combined))
+          ]],
+        },
+      })
+      local highlighter = vim.treesitter.highlighter
+      highlighter.new(parser, {
+        queries = {
+          lua = [[
+      (comment) @comment
+      (function_call
+        name: (identifier) @function.call)
+      (string) @string
+      ]],
+        },
+      })
+    end)
+
+    -- NOTE: There is a querying issue with combined injections. When it is fixed, this test will
+    -- have to be updated.
+    screen:expect([=[
+      {18:-- }{25:print}{18:(}{26:[[some}                                                  |
+      {18:--}{26: text}                                                          |
+      {18:-- here]])}                                                       |
+      ^                                                                 |
+      {1:~                                                                }|*13
+                                                                       |
+    ]=])
+  end)
+
   it("supports injecting by ft name in metadata['injection.language']", function()
     insert(injection_text_c)
 

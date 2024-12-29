@@ -115,6 +115,44 @@ function M.intercepts(r1, r2)
 end
 
 ---@private
+---@param r1 Range
+---@param r2 Range
+---@return Range4?
+function M.intersection(r1, r2)
+  r1 = { M.unpack4(r1) }
+  r2 = { M.unpack4(r2) }
+
+  ---@type integer, integer, integer, integer
+  local start_line, start_col, end_line, end_col
+
+  if r1[1] > r2[3] or r1[3] < r2[1] then
+    -- No intersection (non-overlapping by line)
+    return nil
+  end
+
+  start_line = math.max(r1[1], r2[1])
+  if start_line == r1[1] then
+    start_col = (start_line == r2[1]) and math.max(r1[2], r2[2]) or r1[2]
+  else
+    start_col = r2[2]
+  end
+
+  end_line = math.min(r1[3], r2[3])
+  if end_line == r1[3] then
+    end_col = (end_line == r2[3]) and math.min(r1[4], r2[4]) or r1[4]
+  else
+    end_col = r2[4]
+  end
+
+  -- Validate the resulting range
+  if start_line < end_line or (start_line == end_line and start_col < end_col) then
+    return { start_line, start_col, end_line, end_col }
+  else
+    return nil
+  end
+end
+
+---@private
 ---@param r Range
 ---@return integer, integer, integer, integer
 function M.unpack4(r)

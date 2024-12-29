@@ -54,6 +54,7 @@ end
 
 ---@class (private) vim.treesitter.highlighter.State
 ---@field tstree TSTree
+---@field tree vim.treesitter.LanguageTree
 ---@field next_row integer
 ---@field iter vim.treesitter.highlighter.Iter?
 ---@field highlighter_query vim.treesitter.highlighter.Query
@@ -196,6 +197,7 @@ function TSHighlighter:prepare_highlight_states(srow, erow)
     -- for_each_tree traversal. This ensures that parents' highlight don't override children's.
     table.insert(self._highlight_states, {
       tstree = tstree,
+      tree = tree,
       next_row = 0,
       iter = nil,
       highlighter_query = highlighter_query,
@@ -302,44 +304,58 @@ local function on_line_impl(self, buf, line, is_spell_nav)
     while line >= state.next_row do
       local capture, node, metadata, match = state.iter(line)
 
-      local range = { root_end_row + 1, 0, root_end_row + 1, 0 }
+      local cap_range = { root_end_row + 1, 0, root_end_row + 1, 0 }
       if node then
-        range = vim.treesitter.get_range(node, buf, metadata and metadata[capture])
+        cap_range = vim.treesitter.get_range(node, buf, metadata and metadata[capture])
       end
-      local start_row, start_col, end_row, end_col = Range.unpack4(range)
+      local start_row, start_col, end_row, end_col = Range.unpack4(cap_range)
 
-      if capture then
-        local hl = state.highlighter_query:get_hl_from_capture(capture)
+      ---@type Range4[]
+      local ranges = {}
+      local tree_regions = state.tree:included_regions()
+      if #tree_regions == 1 and #tree_regions[1] ~= 0 then
+        for _, region in pairs(tree_regions[1]) do
+          table.insert(ranges, Range.intersection(cap_range, region))
+        end
+      else
+        table.insert(ranges, cap_range)
+      end
 
-        local capture_name = state.highlighter_query:query().captures[capture]
+      for _, range in ipairs(ranges) do
+        start_row, start_col, end_row, end_col = Range.unpack4(range)
 
-        local spell, spell_pri_offset = get_spell(capture_name)
+        if capture then
+          local hl = state.highlighter_query:get_hl_from_capture(capture)
 
-        -- The "priority" attribute can be set at the pattern level or on a particular capture
-        local priority = (
-          tonumber(metadata.priority or metadata[capture] and metadata[capture].priority)
-          or vim.hl.priorities.treesitter
-        ) + spell_pri_offset
+          local capture_name = state.highlighter_query:query().captures[capture]
 
-        -- The "conceal" attribute can be set at the pattern level or on a particular capture
-        local conceal = metadata.conceal or metadata[capture] and metadata[capture].conceal
+          local spell, spell_pri_offset = get_spell(capture_name)
 
-        local url = get_url(match, buf, capture, metadata)
+          -- The "priority" attribute can be set at the pattern level or on a particular capture
+          local priority = (
+            tonumber(metadata.priority or metadata[capture] and metadata[capture].priority)
+            or vim.hl.priorities.treesitter
+          ) + spell_pri_offset
 
-        if hl and end_row >= line and (not is_spell_nav or spell ~= nil) then
-          api.nvim_buf_set_extmark(buf, ns, start_row, start_col, {
-            end_line = end_row,
-            end_col = end_col,
-            hl_group = hl,
-            ephemeral = true,
-            priority = priority,
-            conceal = conceal,
-            spell = spell,
-            url = url,
-          })
+          -- The "conceal" attribute can be set at the pattern level or on a particular capture
+          local conceal = metadata.conceal or metadata[capture] and metadata[capture].conceal
+
+          local url = get_url(match, buf, capture, metadata)
+
+          if hl and end_row >= line and (not is_spell_nav or spell ~= nil) then
+            api.nvim_buf_set_extmark(buf, ns, start_row, start_col, {
+              end_line = end_row,
+              end_col = end_col,
+              hl_group = hl,
+              ephemeral = true,
+              priority = priority,
+              conceal = conceal,
+              spell = spell,
+              url = url,
+            })
+          end
         end
       end
-
       if start_row > line then
         state.next_row = start_row
       end
