@@ -56,6 +56,7 @@ end
 ---@field tstree TSTree
 ---@field next_row integer
 ---@field iter vim.treesitter.highlighter.Iter?
+---@field root boolean
 ---@field highlighter_query vim.treesitter.highlighter.Query
 
 ---@nodoc
@@ -198,6 +199,7 @@ function TSHighlighter:prepare_highlight_states(srow, erow)
       tstree = tstree,
       next_row = 0,
       iter = nil,
+      root = tree == self.tree,
       highlighter_query = highlighter_query,
     })
   end)
@@ -320,6 +322,10 @@ local function on_line_impl(self, buf, line, is_spell_nav)
           tonumber(metadata.priority or metadata[capture] and metadata[capture].priority)
           or vim.hl.priorities.treesitter
         ) + spell_pri_offset
+
+        if not state.root then
+          priority = priority + 1
+        end
 
         -- The "conceal" attribute can be set at the pattern level or on a particular capture
         local conceal = metadata.conceal or metadata[capture] and metadata[capture].conceal
