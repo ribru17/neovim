@@ -1332,6 +1332,28 @@ Lua module: vim.lsp.client                                        *lsp-client*
       • {supports_method}       (`fun(self: vim.lsp.Client, method: string, bufnr: integer?)`)
                                 See |Client:supports_method()|.
 
+*vim.lsp.Client.Features*
+    A table representing which features to enable for a client. A `true` value
+    will enable the feature with the default configuration. A configuration
+    table can be passed to enable the feature with customizations. A `false`
+    value means the feature will be disabled.
+
+    Fields: ~
+      • {completion}?       (`boolean|vim.lsp.completion.BufferOpts`) Whether
+                            to enable |lsp-autocompletion|. Disabled by
+                            default. Opts are passed to
+                            |vim.lsp.completion.enable()|.
+      • {semantic_tokens}?  (`boolean|vim.lsp.semantic_tokens.start.Opts`)
+                            Whether to enable |lsp-semantic_tokens|. Enabled
+                            by default. Opts are passed to
+                            |vim.lsp.semantic_tokens.start()|.
+      • {inlay_hints}?      (`boolean`) Whether to enable |lsp-inlay_hint|.
+                            Disabled by default.
+      • {document_color}?   (`boolean|vim.lsp.document_color.enable.Opts`)
+                            Whether to enable |lsp-document_color|. Disabled
+                            by default. Opts are passed to
+                            |vim.lsp.document_color.enable()|.
+
 *vim.lsp.Client.Progress*
     Extends: |vim.Ringbuf|
 
@@ -1474,6 +1496,10 @@ Lua module: vim.lsp.client                                        *lsp-client*
                                (navigation, hover) may or may not work
                                depending on the language server, even if the
                                server doesn't require a workspace.
+      • {features}?            (`vim.lsp.Client.Features`) An optional table
+                               to enable certain features for the client, such
+                               as completion, inlay hints, etc. See
+                               |vim.lsp.Client.Features| for more information.
 
 
 Client:cancel_request({id})                          *Client:cancel_request()*
@@ -2234,6 +2260,7 @@ start({bufnr}, {client_id}, {opts})          *vim.lsp.semantic_tokens.start()*
                      • debounce (integer, default: 200): Debounce token
                        requests to the server by the given number in
                        milliseconds
+                     • {debounce}? (`integer`)
 
 stop({bufnr}, {client_id})                    *vim.lsp.semantic_tokens.stop()*
     Stop the semantic token highlighting engine for the given buffer with the

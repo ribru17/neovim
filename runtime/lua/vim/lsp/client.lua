@@ -11,6 +11,26 @@ local validate = vim.validate
 --- @alias vim.lsp.client.on_exit_cb fun(code: integer, signal: integer, client_id: integer)
 --- @alias vim.lsp.client.before_init_cb fun(params: lsp.InitializeParams, config: vim.lsp.ClientConfig)
 
+--- A table representing which features to enable for a client. A `true` value will enable the
+--- feature with the default configuration. A configuration table can be passed to enable the
+--- feature with customizations. A `false` value means the feature will be disabled.
+--- @class vim.lsp.Client.Features
+---
+--- Whether to enable |lsp-autocompletion|. Disabled by default. Opts are passed
+--- to |vim.lsp.completion.enable()|.
+--- @field completion? boolean|vim.lsp.completion.BufferOpts
+---
+--- Whether to enable |lsp-semantic_tokens|. Enabled by default. Opts are passed
+--- to |vim.lsp.semantic_tokens.start()|.
+--- @field semantic_tokens? boolean|vim.lsp.semantic_tokens.start.Opts
+---
+--- Whether to enable |lsp-inlay_hint|. Disabled by default.
+--- @field inlay_hints? boolean
+---
+--- Whether to enable |lsp-document_color|. Disabled by default. Opts are passed
+--- to |vim.lsp.document_color.enable()|.
+--- @field document_color? boolean|vim.lsp.document_color.enable.Opts
+
 --- @class vim.lsp.Client.Flags
 --- @inlinedoc
 ---
@@ -137,6 +157,10 @@ local validate = vim.validate
 --- language server, even if the server doesn't require a workspace.
 --- (default: `false`)
 --- @field workspace_required? boolean
+---
+--- An optional table to enable certain features for the client, such as completion, inlay hints,
+--- etc. See |vim.lsp.Client.Features| for more information.
+--- @field features? vim.lsp.Client.Features
 
 --- @class vim.lsp.Client.Progress: vim.Ringbuf<{token: integer|string, value: any}>
 --- @field pending table<lsp.ProgressToken,lsp.LSPAny>
@@ -1074,15 +1098,6 @@ function Client:on_attach(bufnr)
   })
 
   self:_run_callbacks(self._on_attach_cbs, lsp.client_errors.ON_ATTACH_ERROR, self, bufnr)
-
-  -- schedule the initialization of semantic tokens to give the above
-  -- on_attach and LspAttach callbacks the ability to schedule wrap the
-  -- opt-out (deleting the semanticTokensProvider from capabilities)
-  vim.schedule(function()
-    if vim.tbl_get(self.server_capabilities, 'semanticTokensProvider', 'full') then
-      lsp.semantic_tokens.start(bufnr, self.id)
-    end
-  end)
 
   self.attached_buffers[bufnr] = true
 end

@@ -605,6 +605,10 @@ end
 
 local M = {}
 
+--- @inlinedoc
+--- @class vim.lsp.semantic_tokens.start.Opts
+--- @field debounce? integer
+
 --- Start the semantic token highlighting engine for the given buffer with the
 --- given client. The client must already be attached to the buffer.
 ---
@@ -620,7 +624,7 @@ local M = {}
 ---
 ---@param bufnr (integer) Buffer number, or `0` for current buffer
 ---@param client_id (integer) The ID of the |vim.lsp.Client|
----@param opts? (table) Optional keyword arguments
+---@param opts? (vim.lsp.semantic_tokens.start.Opts) Optional keyword arguments
 ---  - debounce (integer, default: 200): Debounce token requests
 ---        to the server by the given number in milliseconds
 function M.start(bufnr, client_id, opts)

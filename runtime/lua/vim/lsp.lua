@@ -606,6 +606,7 @@ end
 --- clients as needed)
 function lsp.enable(name, enable)
   validate('name', name, { 'string', 'table' })
+  validate('enable', enable, 'boolean', true)
 
   local names = vim._ensure_list(name) --[[@as string[] ]]
   for _, nm in ipairs(names) do
@@ -654,6 +655,42 @@ end
 --- @return boolean
 function lsp.is_enabled(name)
   return lsp._enabled_configs[name] ~= nil
+end
+
+--- Enable certain features to the client; see |vim.lsp.Client.Features|
+---
+--- @param bufnr integer
+--- @param client vim.lsp.Client
+--- @param features vim.lsp.Client.Features?
+local function enable_client_features(bufnr, client, features)
+  features = features or {}
+
+  -- NOTE: We need to type cast here due to an annoying lua_ls bug
+  if features.completion and vim.tbl_get(client.server_capabilities, 'completionProvider') then
+    ---@type vim.lsp.completion.BufferOpts?
+    local opts = type(features.completion) == 'table' and features.completion --[[@as vim.lsp.completion.BufferOpts]]
+      or nil
+    lsp.completion.enable(true, client.id, bufnr, opts)
+  end
+  if features.document_color and vim.tbl_get(client.server_capabilities, 'colorProvider') then
+    ---@type vim.lsp.document_color.enable.Opts?
+    local opts = type(features.document_color) == 'table' and features.document_color --[[@as vim.lsp.document_color.enable.Opts]]
+      or nil
+    lsp.document_color.enable(true, bufnr, opts)
+  end
+  if features.inlay_hints and vim.tbl_get(client.server_capabilities, 'inlayHintProvider') then
+    lsp.inlay_hint.enable(true, { bufnr = bufnr })
+  end
+  -- Semantic tokens are enabled by default
+  if
+    features.semantic_tokens ~= false
+    and vim.tbl_get(client.server_capabilities, 'semanticTokensProvider', 'full')
+  then
+    ---@type vim.lsp.semantic_tokens.start.Opts|nil
+    local opts = type(features.semantic_tokens) == 'table' and features.semantic_tokens --[[@as vim.lsp.semantic_tokens.start.Opts]]
+      or nil
+    lsp.semantic_tokens.start(bufnr, client.id, opts)
+  end
 end
 
 --- @class vim.lsp.start.Opts
@@ -722,6 +759,16 @@ function lsp.start(config, opts)
   opts = opts or {}
   local reuse_client = opts.reuse_client or reuse_client_default
   local bufnr = vim._resolve_bufnr(opts.bufnr)
+
+  local old_on_init = config.on_init
+  -- HACK: Enable features after client has been initialized
+  config.on_init = function(client, res)
+    if old_on_init then
+      old_on_init(client, res)
+    end
+
+    enable_client_features(bufnr, client, config.features)
+  end
 
   if not config.root_dir and opts._root_markers then
     validate('root_markers', opts._root_markers, 'table')
